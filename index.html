@@ -329,7 +329,7 @@
   <div id="term-log" class="term-log"></div>
 </div>
 
-<div class="foot">本页面所有数据均为 <b>模拟演示数据</b> · 时间锚点 2026-11-06 09:30 · Sinexus-0005 软件开发控制面板系统 v1.0</div>
+<div class="foot">本页面所有数据均为 <b>模拟演示数据</b> · 时间与当前系统时间同步 · Sinexus-0005 软件开发控制面板系统 v1.0</div>
 
 <!-- 作业详情 / 重新提交 弹窗 -->
 <div class="modal fade" id="jobModal" tabindex="-1">
@@ -370,7 +370,7 @@
    模拟数据生成（seeded，保证演示一致性）
    ============================================================ */
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
-const rand=mulberry32(20261027);
+const rand=mulberry32(31415926);
 const pick=arr=>arr[Math.floor(rand()*arr.length)];
 const ri=(a,b)=>a+Math.floor(rand()*(b-a+1));
 function hex(n){let s="",c="0123456789abcdef";for(let i=0;i<n;i++)s+=c[Math.floor(rand()*16)];return s;}
@@ -396,9 +396,9 @@ const perfCases=[
 const funcCases=["init_test","dma_transfer","kernel_launch","mem_bandwidth","sync_barrier","error_inject"];
 
 const LOAD_TIME=Date.now();                          // 页面加载的真实时刻
-const NOW=new Date(2026,10,6,9,30,0);                  // 演示基准“当前时间”锚点 = 2026-11-06 09:30:00，所有图表时间轴收敛到 11-06（历史窗口 10-08 ~ 11-06）
-function demoNow(){return new Date(NOW.getTime()+(Date.now()-LOAD_TIME));} // 从 11-06 起按真实秒数前进，时钟仍“活”
-const TODAY=NOW;                                      // 历史数据窗口以 11-06 为终点
+const NOW=new Date();                                 // 演示“当前时间”= 打开页面的真实系统时间（不写死日期：谁在哪天打开，就对应哪天）
+function demoNow(){return new Date(NOW.getTime()+(Date.now()-LOAD_TIME));} // 从真实当前时间起按真实秒数前进，与系统时钟一致
+const TODAY=NOW;                                      // 历史数据窗口以“真实今天”为终点（近 30 天）
 function daysAgo(d){const x=new Date(TODAY);x.setDate(x.getDate()-d);return x;}
 
 let nextId=1000;
@@ -412,7 +412,7 @@ for(let d=0; d<30; d++){
     let jt = jobName.includes("build")?"building": jobName.includes("perf")?"perf":"func";
     if(rand()<0.06) jt="NULL";
     const date=daysAgo(d); date.setHours(ri(0,23),ri(0,59),ri(0,59));
-    if(date>NOW) date.setTime(NOW.getTime()-ri(60,7200)*1000); // 历史数据不晚于基准时间 11-06
+    if(date>NOW) date.setTime(NOW.getTime()-ri(60,7200)*1000); // 历史数据不晚于真实当前时间，杜绝出现“未来时间”
     const commit=hex(7);
     const version=commit;
     const author=pick(authors);
