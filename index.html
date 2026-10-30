@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sinexus-0005 软件开发控制面板系统 v1.0 · 演示 Demo</title>
+<!-- Bootstrap 4 (与原始系统前端一致) — 本地优先，CDN 兜底 -->
+<link rel="stylesheet" href="vendor/bootstrap.min.css" onerror="this.onerror=null;document.write('<link rel=\'stylesheet\' href=\'https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css\'>')">
+<!-- Plotly.js (与原始系统图表库一致) — 本地优先，CDN 兜底 -->
+<script src="vendor/plotly.min.js" charset="utf-8" onerror="this.onerror=null;document.write('<script src=\'https://cdn.plot.ly/plotly-2.35.2.min.js\' charset=\'utf-8\'><\/script>')"></script>
+<style>
+  :root{
+    --brand:#1abc9c;        /* teal/green 品牌色 */
+    --brand-dark:#0f8f76;
+    --panel:#eafaf6;        /* 青绿面板背景 */
+    --ink:#222;
+  }
+  body{background:#f4f6f8;color:var(--ink);font-size:14px;}
+  .navbar-brand{font-weight:700;letter-spacing:.5px;}
+  .navbar-brand .logo-dot{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--brand);margin-right:8px;vertical-align:middle;}
+  .nav-link.active{background:rgba(26,188,156,.18);border-radius:6px;color:#fff!important;font-weight:600;}
+  .view{display:none;}
+  .view.active{display:block;}
+  .panel{background:#fff;border:1px solid #e3e8ee;border-radius:10px;box-shadow:0 2px 10px rgba(20,40,60,.05);}
+  .panel-title{font-weight:700;font-size:15px;padding:12px 16px;border-bottom:1px solid #eef2f6;display:flex;align-items:center;justify-content:space-between;}
+  .panel-title .tag{font-size:12px;font-weight:500;color:#7a8a98;}
+  .panel-body{padding:0;}
+  .chart-wrap{width:100%;height:320px;}
+  .bg-panel{background:var(--panel)!important;}
+  .table thead th{background:#f0f4f8;border-top:none;font-size:12.5px;white-space:nowrap;}
+  .table td{font-size:13px;vertical-align:middle;}
+  .row-fail{color:#d6332e;font-weight:700;}
+  tr.row-fail td{background:#fff5f4;}
+  .badge-pass{background:#1abc9c;color:#fff;}
+  .badge-fail{background:#e74c3c;color:#fff;}
+  .badge-neutral{background:#95a5a6;color:#fff;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:#eef2f6;color:#566;}
+  .clk{cursor:pointer;}
+  .filters label{font-weight:600;font-size:12px;color:#667;}
+  .stat-box{background:linear-gradient(135deg,#1abc9c,#16a085);color:#fff;border-radius:10px;padding:14px 16px;margin-bottom:14px;}
+  .stat-box .n{font-size:26px;font-weight:800;line-height:1;}
+  .stat-box .l{font-size:12px;opacity:.9;margin-top:4px;}
+  .foot{padding:18px 0 40px;text-align:center;color:#9aa7b1;font-size:12px;}
+  .legend-note{font-size:11px;color:#8a97a3;padding:6px 16px;}
+  .modal .table td,.modal .table th{font-size:12.5px;}
+  .hl{background:#fff8c4!important;}
+  .toast-msg{position:fixed;right:18px;bottom:18px;z-index:2000;display:none;max-width:380px;}
+  /* —— 实时运行状态 —— */
+  .live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#2ecc71;margin-right:6px;vertical-align:middle;animation:pulse 1.5s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(46,204,113,.55);}70%{box-shadow:0 0 0 9px rgba(46,204,113,0);}100%{box-shadow:0 0 0 0 rgba(46,204,113,0);}}
+  .live-panel{border-color:#bfe9df;background:linear-gradient(135deg,#ffffff,#f3fcf9);}
+  .live-card{background:#f7fcfb;border:1px solid #dfeef0;border-radius:8px;padding:8px 10px;}
+  .badge-running{background:#f39c12;color:#fff;}
+  .navbar-text #live-clock{font-variant-numeric:tabular-nums;}
+  .compare-change-up{color:#1e8e3e;font-weight:700;}
+  .compare-change-down{color:#d6332e;font-weight:700;}
+  .section-h{font-size:18px;font-weight:700;margin:4px 0 14px;}
+  .doc-tip{background:#fffaf0;border:1px solid #f3e2bf;color:#8a6d3b;border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:16px;}
+  .btn-brand{background:var(--brand);border-color:var(--brand);color:#fff;}
+  .btn-brand:hover{background:var(--brand-dark);border-color:var(--brand-dark);color:#fff;}
+</style>
+</head>
+<body>
+
+<!-- 顶部导航栏 -->
+<nav class="navbar navbar-expand-lg navbar-dark" style="background:#1f2d3d;">
+  <span class="navbar-brand"><span class="logo-dot"></span>Sinexus-0005 控制面板</span>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#nav">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="nav">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item"><a class="nav-link active" data-view="overview" href="#">状态概览</a></li>
+      <li class="nav-item"><a class="nav-link" data-view="jobs" href="#">作业表</a></li>
+      <li class="nav-item"><a class="nav-link" data-view="results" href="#">测试结果</a></li>
+      <li class="nav-item"><a class="nav-link" data-view="pie" href="#">饼图</a></li>
+      <li class="nav-item"><a class="nav-link" data-view="line" href="#">折线图</a></li>
+      <li class="nav-item"><a class="nav-link" data-view="scatter" href="#">散点图</a></li>
+      <li class="nav-item"><a class="nav-link" data-view="perf" href="#">性能折线图</a></li>
+      <li class="nav-item"><a class="nav-link" data-view="gpu" href="#">GPU 型号表</a></li>
+      <li class="nav-item"><a class="nav-link" data-view="history" href="#">作业历史/比较</a></li>
+    </ul>
+    <span class="navbar-text text-light mr-3" style="font-size:12px;">⏱ <span id="live-clock"></span></span>
+    <span class="navbar-text text-light mr-3" style="font-size:12px;">最后更新：<span id="last-update">刚刚</span></span>
+    <span class="navbar-text text-light" style="font-size:12px;">v1.0 · Demo</span>
+  </div>
+</nav>
+
+<div class="container-fluid pt-3">
+
+  <!-- ============ 1. 状态概览 ============ -->
+  <section class="view active" id="view-overview">
+    <div class="section-h">状态概览</div>
+    <div class="doc-tip">主页提供当前测试总体状态，包含四部分：① 最新执行的测试列表　② 过去 30 天各类型测试每日执行次数　③ 各类型测试所占百分比　④ 指定测试过去 30 天每日执行情况。表格/图表均可点击查看详情。</div>
+    <div class="panel mb-3 live-panel">
+      <div class="panel-title">
+        <span><span class="live-dot"></span>实时运行状态 · 系统运行中</span>
+        <span class="tag">当前执行任务进度实时刷新</span>
+      </div>
+      <div class="panel-body p-3">
+        <div class="row" id="live-jobs"></div>
+        <div class="legend-note mt-1 mb-0">提示：上方为当前正在执行的测试任务，进度每秒实时更新；任务完成后会自动进入下方「最新执行的测试」与作业表，系统总作业数同步增长。</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg-6 mb-3">
+        <div class="panel">
+          <div class="panel-title">最新执行的测试 <span class="tag">按时间倒序</span></div>
+          <div class="panel-body" style="padding:0 8px 8px;">
+            <table class="table table-sm table-hover mb-0" id="ov-latest">
+              <thead><tr><th>ID</th><th>JobName</th><th>Commit</th><th>Author</th><th>评级</th><th>Results</th><th>时间</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6 mb-3">
+        <div class="panel bg-panel">
+          <div class="panel-title">过去 30 天测试每日执行次数 <span class="tag">building / func / perf</span></div>
+          <div class="panel-body p-2"><div id="ov-line" class="chart-wrap"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg-6 mb-3">
+        <div class="panel bg-panel">
+          <div class="panel-title">各类型测试所占百分比 <span class="tag">饼图</span></div>
+          <div class="panel-body p-2"><div id="ov-pie" class="chart-wrap"></div></div>
+        </div>
+      </div>
+      <div class="col-lg-6 mb-3">
+        <div class="panel bg-panel">
+          <div class="panel-title">指定测试每日执行情况 <span class="tag">Sinexus_X200_compute</span></div>
+          <div class="panel-body p-2"><div id="ov-scatter" class="chart-wrap"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-12">
+        <div class="stat-box" style="background:linear-gradient(135deg,#3498db,#2c80c0);">
+          <div class="n" id="ov-total">0</div>
+          <div class="l">近 30 天作业总数（点击导航查看明细）</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. 作业表 ============ -->
+  <section class="view" id="view-jobs">
+    <div class="section-h">作业表（Job list）</div>
+    <div class="doc-tip">作业（Job）与 Jenkins 的 job 一一对应，按时间倒序列出所有测试。失败作业行以红色加粗显示，鼠标所在行高亮。支持过滤器、分页（每页 20 条）、历史查询（H）与重新提交（Rerun）。</div>
+    <div class="panel">
+      <div class="panel-body p-3">
+        <div class="filters form-inline mb-2">
+          <label class="mr-2">Project</label>
+          <select id="f-project" class="form-control form-control-sm mr-3"></select>
+          <label class="mr-2">Job Type</label>
+          <select id="f-type" class="form-control form-control-sm mr-3"></select>
+          <label class="mr-2">Job Name</label>
+          <select id="f-name" class="form-control form-control-sm mr-3"></select>
+          <button class="btn btn-brand btn-sm" id="f-apply">Apply Filter</button>
+          <button class="btn btn-outline-secondary btn-sm ml-2" id="f-reset">Reset</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0" id="jobs-table">
+            <thead><tr>
+              <th>ID</th><th>JobName</th><th>CommitID</th><th>Author</th><th>Type</th>
+              <th>Date</th><th>Results</th><th>历史</th><th>Rerun</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <div class="legend-note" id="jobs-count"></div>
+          <ul class="pagination pagination-sm mb-0" id="jobs-pager"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. 测试结果 ============ -->
+  <section class="view" id="view-results">
+    <div class="section-h">测试结果（Result list）</div>
+    <div class="doc-tip">测试结果（Result）以表格形式呈现所有测试用例，支持分页、历史查询（H）。失败的测试结果以红色加粗显示，方便注意。</div>
+    <div class="panel">
+      <div class="panel-body p-3">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0" id="results-table">
+            <thead><tr><th>ID</th><th>JobName</th><th>TestCase</th><th>Status</th><th>Value</th><th>Date</th><th>历史</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <div class="legend-note" id="results-count"></div>
+          <ul class="pagination pagination-sm mb-0" id="results-pager"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4. 饼图 ============ -->
+  <section class="view" id="view-pie">
+    <div class="section-h">饼图（Pie chart）</div>
+    <div class="doc-tip">统计所有类型作业的执行次数及所占百分比。将鼠标放到对应扇形上即可显示该类型执行过的总数。</div>
+    <div class="panel bg-panel">
+      <div class="panel-title">各类型作业所占百分比</div>
+      <div class="panel-body p-2"><div id="pie-chart" class="chart-wrap" style="height:420px;"></div></div>
+    </div>
+  </section>
+
+  <!-- ============ 5. 折线图 ============ -->
+  <section class="view" id="view-line">
+    <div class="section-h">折线图（Line chart）</div>
+    <div class="doc-tip">分析作业数据随时间的变化趋势。默认显示各类型每日执行数；通过 Job Type 过滤器选择某一类型时，切换为显示该类型每日成功/失败的测试数。鼠标悬停可查看当天数据。</div>
+    <div class="panel">
+      <div class="panel-body p-3">
+        <div class="filters form-inline mb-2">
+          <label class="mr-2">Job Type 过滤</label>
+          <select id="line-type" class="form-control form-control-sm mr-3"></select>
+          <span class="legend-note mb-0">选择“全部”显示各类型趋势；选择具体类型显示成功/失败趋势。</span>
+        </div>
+        <div id="line-chart" class="chart-wrap" style="height:420px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 6. 散点图 ============ -->
+  <section class="view" id="view-scatter">
+    <div class="section-h">散点图（Scatter chart）</div>
+    <div class="doc-tip">每个点表示一个独立作业，可获取详细信息；点击散点进入该作业，失败时可在弹窗中点击「触发(Trigger)」运行自动定位回归测试（Regression Narrow Down）。</div>
+    <div class="panel">
+      <div class="panel-body p-3">
+        <div class="filters form-inline mb-2">
+          <label class="mr-2">Job Name</label>
+          <select id="scatter-name" class="form-control form-control-sm mr-3"></select>
+          <button class="btn btn-brand btn-sm" id="scatter-apply">Apply Filter</button>
+        </div>
+        <div id="scatter-chart" class="chart-wrap" style="height:440px;"></div>
+        <div class="legend-note">提示：点击任意散点打开作业详情；失败作业可触发自动定位回归测试。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 7. 性能测试折线图 ============ -->
+  <section class="view" id="view-perf">
+    <div class="section-h">性能测试折线图（Perf line chart）</div>
+    <div class="doc-tip">每条折线代表一个测试用例，y 轴为测试结果的数值（如 TOPS、FPS）。鼠标悬停可查看某天各用例具体数据，支持选择单个测试用例查看。</div>
+    <div class="panel">
+      <div class="panel-body p-3">
+        <div class="filters form-inline mb-2">
+          <label class="mr-2">Choose Test Case</label>
+          <select id="perf-case" class="form-control form-control-sm mr-3"></select>
+          <span class="legend-note mb-0">默认显示全部用例；选择单项只看该用例趋势。</span>
+        </div>
+        <div id="perf-chart" class="chart-wrap" style="height:440px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GPU 型号表 ============ -->
+  <section class="view" id="view-gpu">
+    <div class="section-h">GPU 型号表</div>
+    <div class="doc-tip">本系统覆盖的 GPU 型号仅包含 <b>X200</b> 与 <b>S200</b> 两款。下表为型号关键规格概览（演示数据）。</div>
+    <div class="panel">
+      <div class="panel-title">芯桥 GPU 型号一览 <span class="tag">仅 X200 / S200</span></div>
+      <div class="panel-body p-3">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered mb-0" id="gpu-table">
+            <thead class="thead-dark">
+              <tr><th>型号</th><th>FP16 算力 (TOPS)</th><th>FP32 算力 (TFLOPS)</th><th>显存</th><th>功耗</th><th>状态</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 8. 作业历史 / 比较报告 ============ -->
+  <section class="view" id="view-history">
+    <div class="section-h">作业历史 / 比较报告（Compare report）</div>
+    <div class="doc-tip">在作业历史页面勾选两个不同版本号的行，点击「比较(Compare)」即可自动生成版本间测试结果比较报告，并可保存到本地。</div>
+    <div class="panel">
+      <div class="panel-body p-3">
+        <div class="filters form-inline mb-2">
+          <label class="mr-2">Job Name</label>
+          <select id="hist-name" class="form-control form-control-sm mr-3"></select>
+          <button class="btn btn-brand btn-sm" id="hist-apply">查看历史</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0" id="history-table">
+            <thead><tr><th>选择</th><th>ID</th><th>JobName</th><th>Version</th><th>Author</th><th>Date</th><th>Status</th><th>Results</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="mt-2">
+          <button class="btn btn-brand btn-sm" id="compare-btn">Compare（比较）</button>
+          <span class="legend-note mb-0" id="compare-hint">请勾选 2 个不同版本的行。</span>
+        </div>
+      </div>
+    </div>
+    <div id="compare-result"></div>
+  </section>
+
+</div>
+
+<!-- 作业详情 / 重新提交 弹窗 -->
+<div class="modal fade" id="jobModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="jobModalTitle">作业详情</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body" id="jobModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+        <button type="button" class="btn btn-brand" id="jobTriggerBtn">触发 Trigger（自动定位回归测试）</button>
+        <button type="button" class="btn btn-outline-primary" id="jobRerunBtn">重新提交 Rerun</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 通用确认 / 结果 弹窗 -->
+<div class="modal fade" id="msgModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="msgTitle">提示</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button></div>
+      <div class="modal-body" id="msgBody"></div>
+      <div class="modal-footer"><button type="button" class="btn btn-primary" data-dismiss="modal">确定</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-msg alert alert-success" id="toast"></div>
+
+<script src="vendor/jquery.slim.min.js" onerror="this.onerror=null;document.write('<script src=\'https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js\'><\/script>')"></script>
+<script src="vendor/bootstrap.bundle.min.js" onerror="this.onerror=null;document.write('<script src=\'https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js\'><\/script>')"></script>
+<script>
+/* ============================================================
+   模拟数据生成（seeded，保证演示一致性）
+   ============================================================ */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const rand=mulberry32(20261027);
+const pick=arr=>arr[Math.floor(rand()*arr.length)];
+const ri=(a,b)=>a+Math.floor(rand()*(b-a+1));
+function hex(n){let s="",c="0123456789abcdef";for(let i=0;i<n;i++)s+=c[Math.floor(rand()*16)];return s;}
+
+const projects=[
+  {name:"Sinexus_X200_compute", jobs:["Sinexus_X200_compute build","Sinexus_X200_compute func","Sinexus_X200_compute perf"]},
+  {name:"Sinexus_X200_video",   jobs:["Sinexus_X200_video enc","Sinexus_X200_video dec"]},
+  {name:"Sinexus_S200_compute", jobs:["Sinexus_S200_compute build","Sinexus_S200_compute func","Sinexus_S200_compute perf"]},
+  {name:"Sinexus_S200_video",   jobs:["Sinexus_S200_video enc","Sinexus_S200_video dec"]},
+];
+const authors=["charles","alice","bob","david","emma","frank"];
+const jobTypes=["building","func","perf","NULL"];
+
+// 性能测试用例（含单位与基准区间）
+const perfCases=[
+  {name:"Peak FP16", unit:"TOPS", base:1380, spread:60},
+  {name:"Peak FP32", unit:"TFLOPS", base:612, spread:30},
+  {name:"Peak FP64", unit:"TFLOPS", base:306, spread:15},
+  {name:"Peak INT8", unit:"TOPS", base:2760, spread:120},
+  {name:"Video FPS", unit:"FPS", base:240, spread:18},
+];
+// 功能测试用例
+const funcCases=["init_test","dma_transfer","kernel_launch","mem_bandwidth","sync_barrier","error_inject"];
+
+const LOAD_TIME=Date.now();                          // 页面加载的真实时刻
+const NOW=new Date(2026,10,6,12,0,0);                 // 演示基准“当前时间”= 2026-11-06，所有图表时间轴收敛到 11 月 6 日
+function demoNow(){return new Date(NOW.getTime()+(Date.now()-LOAD_TIME));} // 从 11-06 起按真实秒数前进，时钟仍“活”
+const TODAY=NOW;                                      // 历史数据窗口以 11-06 为终点
+function daysAgo(d){const x=new Date(TODAY);x.setDate(x.getDate()-d);return x;}
+
+let nextId=1000;
+const jobs=[];
+// 生成近 30 天作业
+for(let d=0; d<30; d++){
+  const n=ri(4,13);
+  for(let i=0;i<n;i++){
+    const proj=pick(projects);
+    const jobName=pick(proj.jobs);
+    let jt = jobName.includes("build")?"building": jobName.includes("perf")?"perf":"func";
+    if(rand()<0.06) jt="NULL";
+    const date=daysAgo(d); date.setHours(ri(0,23),ri(0,59),ri(0,59));
+    if(date>NOW) date.setTime(NOW.getTime()-ri(60,7200)*1000); // 历史数据不晚于基准时间 11-06
+    const commit=hex(7);
+    const version=commit;
+    const author=pick(authors);
+    const isPerf = jt==="perf";
+    let results=[], pass=0, fail=0;
+    if(isPerf){
+      perfCases.forEach(pc=>{
+        const v=+(pc.base + (rand()*2-1)*pc.spread).toFixed(2);
+        const st = (rand()<0.04)?"FAIL":"PASS";
+        results.push({testCase:pc.name, status:st, value:v, unit:pc.unit});
+        st==="PASS"?pass++:fail++;
+      });
+    } else {
+      const cnt=ri(1,5);
+      for(let k=0;k<cnt;k++){
+        const st = (rand()<0.22)?"FAIL":"PASS";
+        results.push({testCase:pick(funcCases), status:st, value:null, unit:null});
+        st==="PASS"?pass++:fail++;
+      }
+    }
+    const status = fail>0?"FAILURE":"SUCCESS";
+    jobs.push({id:nextId++, jobName, project:proj.name, jobType:jt, commitId:commit,
+      version, author, date, status, pass, fail, results});
+  }
+}
+jobs.sort((a,b)=>b.date-a.date);
+
+const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+const fmtDate=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const statusBadge=s=> s==="FAILURE"?'<span class="badge badge-fail">FAILURE</span>': s==="SUCCESS"?'<span class="badge badge-pass">SUCCESS</span>':'<span class="badge badge-neutral">NULL</span>';
+
+/* ============================================================
+   视图切换
+   ============================================================ */
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('.nav-link').forEach(a=>a.classList.toggle('active', a.dataset.view===name));
+  if(name==='overview') renderOverview();
+  if(name==='jobs') renderJobs();
+  if(name==='results') renderResults();
+  if(name==='pie') renderPie();
+  if(name==='line') renderLine();
+  if(name==='scatter') renderScatter();
+  if(name==='perf') renderPerf();
+  if(name==='gpu') renderGpu();
+  if(name==='history') renderHistory();
+}
+document.querySelectorAll('.nav-link').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();showView(a.dataset.view);}));
+
+/* ============================================================
+   1. 状态概览
+   ============================================================ */
+function relTime(d){
+  const s=Math.floor((demoNow()-d)/1000);
+  if(s<60)return '刚刚';
+  if(s<3600)return Math.floor(s/60)+' 分钟前';
+  if(s<86400)return Math.floor(s/3600)+' 小时前';
+  return Math.floor(s/86400)+' 天前';
+}
+function refreshLatest(){
+  const tb=document.querySelector('#ov-latest tbody'); if(!tb)return;
+  tb.innerHTML='';
+  jobs.slice(0,8).forEach(j=>{
+    const tr=document.createElement('tr'); if(j.status==='FAILURE') tr.className='row-fail';
+    tr.innerHTML=`<td>${j.id}</td><td>${j.jobName}</td><td><code>${j.commitId}</code></td><td>${j.author}</td>
+      <td>${j.status==='FAILURE'?'<span class="badge badge-fail">失败</span>':'<span class="badge badge-pass">通过</span>'}</td>
+      <td><a class="clk" onclick="gotoResults(${j.id})">Pass:${j.pass} Fail:${j.fail}</a></td>
+      <td style="font-size:12px;color:#7a8a98;white-space:nowrap;">${relTime(j.date)}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function renderOverview(){
+  refreshLatest();
+  document.getElementById('ov-total').textContent=jobs.length;
+
+  // 折线：每日各类型计数
+  const days=[...Array(30).keys()].map(d=>{const x=daysAgo(29-d);return fmtDate(x);}).sort();
+  const byType={building:[],func:[],perf:[]};
+  ['building','func','perf'].forEach(t=>{
+    const arr=days.map(day=>jobs.filter(j=>j.jobType===t&&fmtDate(j.date)===day).length);
+    byType[t]=arr;
+  });
+  Plotly.newPlot('ov-line',[
+    {x:days,y:byType.building,name:'building',mode:'lines+markers',line:{color:'#3498db'}},
+    {x:days,y:byType.func,name:'func',mode:'lines+markers',line:{color:'#1abc9c'}},
+    {x:days,y:byType.perf,name:'perf',mode:'lines+markers',line:{color:'#e67e22'}},
+  ],{margin:{t:10,r:10,b:30,l:35},legend:{orientation:'h',y:-0.2},xaxis:{tickangle:-45,tickfont:{size:9}},yaxis:{title:'次数'}},{displayModeBar:false,responsive:true});
+
+  // 饼图
+  const counts={}; jobTypes.forEach(t=>counts[t]=jobs.filter(j=>j.jobType===t).length);
+  Plotly.newPlot('ov-pie',[{
+    type:'pie', labels:jobTypes, values:jobTypes.map(t=>counts[t]),
+    textinfo:'label+percent', hole:.0,
+    marker:{colors:['#1abc9c','#3498db','#e67e22','#95a5a6']}
+  }],{margin:{t:10,b:10,l:10,r:10},showlegend:true},{displayModeBar:false,responsive:true});
+
+  // 散点：Sinexus_X200_compute 每日执行情况
+  const sc=jobs.filter(j=>j.jobName.startsWith('Sinexus_X200_compute'));
+  const sByDay={};
+  sc.forEach(j=>{const d=fmtDate(j.date);(sByDay[d]=sByDay[d]||[]).push(j);});
+  const xs=[],ys=[],colors=[],texts=[];
+  Object.keys(sByDay).sort().forEach(d=>{
+    sByDay[d].forEach((j,idx)=>{xs.push(d);ys.push(idx+1);colors.push(j.status==='FAILURE'?'#e74c3c':'#1abc9c');
+      texts.push(`ID:${j.id} ${j.jobName}<br>作者:${j.author}<br>${j.status}`);});
+  });
+  Plotly.newPlot('ov-scatter',[{
+    x:xs,y:ys,mode:'markers',type:'scatter',text:texts,hoverinfo:'text',
+    marker:{size:10,color:colors,line:{width:1,color:'#fff'}}
+  }],{margin:{t:10,r:10,b:40,l:35},xaxis:{tickangle:-45,tickfont:{size:9}},yaxis:{title:'执行次序'}},{displayModeBar:false,responsive:true});
+}
+
+/* ============================================================
+   2. 作业表
+   ============================================================ */
+let jobFilters={project:'ALL',type:'ALL',name:'ALL'};
+let jobPage=1; const PAGE=20;
+function initJobFilters(){
+  const fP=document.getElementById('f-project');
+  fP.innerHTML='<option value="ALL">全部</option>'+projects.map(p=>`<option>${p.name}</option>`).join('');
+  const fT=document.getElementById('f-type');
+  fT.innerHTML='<option value="ALL">全部</option>'+jobTypes.map(t=>`<option>${t}</option>`).join('');
+  const fN=document.getElementById('f-name');
+  const names=[...new Set(jobs.map(j=>j.jobName))].sort();
+  fN.innerHTML='<option value="ALL">全部</option>'+names.map(n=>`<option>${n}</option>`).join('');
+}
+function filteredJobs(){
+  return jobs.filter(j=>
+    (jobFilters.project==='ALL'||j.project===jobFilters.project)&&
+    (jobFilters.type==='ALL'||j.jobType===jobFilters.type)&&
+    (jobFilters.name==='ALL'||j.jobName===jobFilters.name));
+}
+function renderJobs(){
+  const data=filteredJobs();
+  const pages=Math.max(1,Math.ceil(data.length/PAGE));
+  if(jobPage>pages)jobPage=pages;
+  const slice=data.slice((jobPage-1)*PAGE,jobPage*PAGE);
+  const tb=document.querySelector('#jobs-table tbody'); tb.innerHTML='';
+  slice.forEach(j=>{
+    const tr=document.createElement('tr'); if(j.status==='FAILURE') tr.className='row-fail';
+    tr.innerHTML=`<td>${j.id}</td>
+      <td>${j.jobName}</td>
+      <td><code>${j.commitId}</code></td>
+      <td>${j.author}</td>
+      <td><span class="pill">${j.jobType}</span></td>
+      <td>${fmt(j.date)}</td>
+      <td><a class="clk" onclick="gotoResults(${j.id})">Pass:${j.pass} Fail:${j.fail}</a></td>
+      <td><a class="clk" title="查看历史" onclick="gotoHistory('${j.jobName}')">[H]</a></td>
+      <td><button class="btn btn-outline-secondary btn-sm py-0" onclick="rerunJob(${j.id})">Rerun</button></td>`;
+    tb.appendChild(tr);
+  });
+  document.getElementById('jobs-count').textContent=`共 ${data.length} 条作业，第 ${jobPage}/${pages} 页`;
+  const pg=document.getElementById('jobs-pager'); pg.innerHTML='';
+  for(let p=1;p<=pages;p++){
+    const li=document.createElement('li'); li.className='page-item'+(p===jobPage?' active':'');
+    li.innerHTML=`<a class="page-link" href="#">${p}</a>`;
+    li.addEventListener('click',e=>{e.preventDefault();jobPage=p;renderJobs();});
+    pg.appendChild(li);
+  }
+}
+document.getElementById('f-apply').onclick=()=>{jobFilters={project:f_project.value,type:f_type.value,name:f_name.value};jobPage=1;renderJobs();};
+document.getElementById('f-reset').onclick=()=>{f_project.value='ALL';f_type.value='ALL';f_name.value='ALL';jobFilters={project:'ALL',type:'ALL',name:'ALL'};jobPage=1;renderJobs();};
+
+function rerunJob(id){
+  showMsg('重新提交作业',`已向 Jenkins 重新提交作业 #${id}。<br>返回的 Jenkins 作业链接：<br><code>http://10.9.0.54:8888/job/Sinexus_X200_compute/${id+ri(1,50)}/</code>`);
+}
+window.rerunJob=rerunJob;
+window.gotoResults=id=>{showView('results'); resultFilterJobId=id; resultPage=1; renderResults();};
+window.gotoHistory=name=>{showView('history'); hist_name.value=name; renderHistory();};
+
+/* ============================================================
+   3. 测试结果
+   ============================================================ */
+let resultPage=1; let resultFilterJobId=null;
+function renderResults(){
+  let rows=[];
+  jobs.forEach(j=>j.results.forEach(r=>rows.push({...r,jobId:j.id,jobName:j.jobName,date:j.date,version:j.version})));
+  if(resultFilterJobId!=null) rows=rows.filter(r=>r.jobId===resultFilterJobId);
+  const pages=Math.max(1,Math.ceil(rows.length/PAGE));
+  if(resultPage>pages)resultPage=pages;
+  const slice=rows.slice((resultPage-1)*PAGE,resultPage*PAGE);
+  const tb=document.querySelector('#results-table tbody'); tb.innerHTML='';
+  slice.forEach(r=>{
+    const tr=document.createElement('tr'); if(r.status==='FAILURE') tr.className='row-fail';
+    const val=r.value!=null?`${r.value} ${r.unit||''}`:'-';
+    tb.insertAdjacentHTML('beforeend',`<tr class="${r.status==='FAILURE'?'row-fail':''}">
+      <td>${r.jobId}</td><td>${r.jobName}</td><td>${r.testCase}</td>
+      <td>${statusBadge(r.status)}</td><td>${val}</td><td>${fmt(r.date)}</td>
+      <td><a class="clk" onclick="openJob(${r.jobId})">[H]</a></td></tr>`);
+  });
+  document.getElementById('results-count').textContent=`共 ${rows.length} 条测试结果${resultFilterJobId!=null?`（已筛选作业 #${resultFilterJobId}）`:''}，第 ${resultPage}/${pages} 页`;
+  const pg=document.getElementById('results-pager'); pg.innerHTML='';
+  for(let p=1;p<=pages;p++){
+    const li=document.createElement('li'); li.className='page-item'+(p===resultPage?' active':'');
+    li.innerHTML=`<a class="page-link" href="#">${p}</a>`;
+    li.addEventListener('click',e=>{e.preventDefault();resultPage=p;renderResults();});
+    pg.appendChild(li);
+  }
+}
+
+/* ============================================================
+   4. 饼图
+   ============================================================ */
+function renderPie(){
+  const counts={}; jobTypes.forEach(t=>counts[t]=jobs.filter(j=>j.jobType===t).length);
+  const total=jobs.length;
+  Plotly.newPlot('pie-chart',[{
+    type:'pie', labels:jobTypes, values:jobTypes.map(t=>counts[t]),
+    textinfo:'label+percent', hoverinfo:'label+value+percent',
+    marker:{colors:['#1abc9c','#3498db','#e67e22','#95a5a6']},
+    texttemplate:'%{label}<br>%{percent}',
+  }],{margin:{t:20,b:20,l:20,r:20},showlegend:true,title:{text:`共 ${total} 次作业`,font:{size:14}}},{displayModeBar:false,responsive:true});
+}
+
+/* ============================================================
+   5. 折线图
+   ============================================================ */
+function initLineFilter(){
+  const s=document.getElementById('line-type');
+  s.innerHTML='<option value="ALL">全部</option>'+jobTypes.map(t=>`<option>${t}</option>`).join('');
+}
+function renderLine(){
+  const t=document.getElementById('line-type').value;
+  const days=[...Array(30).keys()].map(d=>{const x=daysAgo(29-d);return fmtDate(x);}).sort();
+  let traces;
+  if(t==='ALL'){
+    traces=['building','func','perf'].map(tp=>({
+      x:days,y:days.map(d=>jobs.filter(j=>j.jobType===tp&&fmtDate(j.date)===d).length),
+      name:tp,mode:'lines+markers',line:{color:tp==='building'?'#3498db':tp==='func'?'#1abc9c':'#e67e22'}
+    }));
+  }else{
+    traces=[
+      {x:days,y:days.map(d=>jobs.filter(j=>j.jobType===t&&fmtDate(j.date)===d&&j.status==='SUCCESS').length),name:t+' 成功',mode:'lines+markers',line:{color:'#1abc9c'}},
+      {x:days,y:days.map(d=>jobs.filter(j=>j.jobType===t&&fmtDate(j.date)===d&&j.status==='FAILURE').length),name:t+' 失败',mode:'lines+markers',line:{color:'#e74c3c'}},
+    ];
+  }
+  Plotly.newPlot('line-chart',traces,
+    {margin:{t:20,r:10,b:50,l:40},legend:{orientation:'h',y:-0.2},xaxis:{tickangle:-45,tickfont:{size:9}},yaxis:{title:'执行次数'}},
+    {displayModeBar:false,responsive:true});
+}
+document.getElementById('line-type').onchange=renderLine;
+
+/* ============================================================
+   6. 散点图
+   ============================================================ */
+function initScatterFilter(){
+  const s=document.getElementById('scatter-name');
+  const names=[...new Set(jobs.map(j=>j.jobName))].sort();
+  s.innerHTML=names.map(n=>`<option ${n==='Sinexus_X200_compute build'?'selected':''}>${n}</option>`).join('');
+}
+function renderScatter(){
+  const name=document.getElementById('scatter-name').value;
+  const sc=jobs.filter(j=>j.jobName===name);
+  const sByDay={}; sc.forEach(j=>{const d=fmtDate(j.date);(sByDay[d]=sByDay[d]||[]).push(j);});
+  const xs=[],ys=[],colors=[],texts=[],ids=[];
+  Object.keys(sByDay).sort().forEach(d=>{
+    sByDay[d].forEach((j,idx)=>{xs.push(d);ys.push(idx+1);colors.push(j.status==='FAILURE'?'#e74c3c':'#1abc9c');
+      texts.push(`ID:${j.id}<br>${j.jobName}<br>作者:${j.author}<br>${j.status}<br>Pass:${j.pass} Fail:${j.fail}`);
+      ids.push(j.id);});
+  });
+  Plotly.newPlot('scatter-chart',[{
+    x:xs,y:ys,mode:'markers',type:'scatter',text:texts,hoverinfo:'text',customdata:ids,
+    marker:{size:12,color:colors,line:{width:1,color:'#fff'}}
+  }],{margin:{t:20,r:10,b:50,l:40},xaxis:{tickangle:-45,tickfont:{size:9}},yaxis:{title:'执行次序'}},
+    {displayModeBar:false,responsive:true});
+  const el=document.getElementById('scatter-chart');
+  el.on('plotly_click',e=>{if(e.points&&e.points[0])openJob(e.points[0].customdata);});
+}
+document.getElementById('scatter-apply').onclick=renderScatter;
+
+/* ============================================================
+   7. 性能测试折线图
+   ============================================================ */
+function initPerfFilter(){
+  const s=document.getElementById('perf-case');
+  s.innerHTML='<option value="ALL">全部用例</option>'+perfCases.map(p=>`<option>${p.name}</option>`).join('');
+}
+function renderPerf(){
+  const sel=document.getElementById('perf-case').value;
+  const cases=sel==='ALL'?perfCases:perfCases.filter(p=>p.name===sel);
+  // 取 perf 作业，按日期聚合每一天各用例均值
+  const perfJobs=jobs.filter(j=>j.jobType==='perf');
+  const byDay={};
+  perfJobs.forEach(j=>{const d=fmtDate(j.date);(byDay[d]=byDay[d]||[]).push(j);});
+  const days=Object.keys(byDay).sort();
+  const traces=cases.map(pc=>{
+    const y=days.map(d=>{
+      const vals=byDay[d].map(j=>{const r=j.results.find(r=>r.testCase===pc.name);return r?r.value:null;}).filter(v=>v!=null);
+      return vals.length?+(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):null;
+    });
+    return {x:days,y,name:`${pc.name} (${pc.unit})`,mode:'lines+markers',connectgaps:true};
+  });
+  Plotly.newPlot('perf-chart',traces,
+    {margin:{t:20,r:10,b:50,l:50},legend:{orientation:'h',y:-0.25},xaxis:{tickangle:-45,tickfont:{size:9}},yaxis:{title:'数值'}},
+    {displayModeBar:false,responsive:true});
+}
+document.getElementById('perf-case').onchange=renderPerf;
+
+/* ============================================================
+   GPU 型号表（仅 X200 / S200）
+   ============================================================ */
+const GPU_MODELS=[
+  {model:"X200", fp16:1381.64, fp32:612.14, mem:"64GB HBM3", power:"300W", status:"量产"},
+  {model:"S200", fp16:690.82,  fp32:306.07, mem:"32GB HBM3", power:"150W", status:"量产"},
+];
+function renderGpu(){
+  const tb=document.querySelector('#gpu-table tbody'); tb.innerHTML='';
+  GPU_MODELS.forEach(g=>{
+    tb.insertAdjacentHTML('beforeend',`<tr>
+      <td><b>${g.model}</b></td>
+      <td>${g.fp16}</td><td>${g.fp32}</td><td>${g.mem}</td><td>${g.power}</td>
+      <td><span class="badge badge-pass">${g.status}</span></td></tr>`);
+  });
+}
+
+/* ============================================================
+   8. 作业历史 / 比较报告
+   ============================================================ */
+function initHistFilter(){
+  const s=document.getElementById('hist-name');
+  const names=[...new Set(jobs.map(j=>j.jobName))].sort();
+  s.innerHTML=names.map(n=>`<option ${n==='Sinexus_X200_compute func'?'selected':''}>${n}</option>`).join('');
+}
+function renderHistory(){
+  const name=document.getElementById('hist-name').value;
+  const list=jobs.filter(j=>j.jobName===name).sort((a,b)=>b.date-a.date);
+  const tb=document.querySelector('#history-table tbody'); tb.innerHTML='';
+  list.forEach(j=>{
+    tb.insertAdjacentHTML('beforeend',`<tr>
+      <td><input type="checkbox" class="hist-cb" value="${j.id}"></td>
+      <td>${j.id}</td><td>${j.jobName}</td><td><code>${j.version}</code></td>
+      <td>${j.author}</td><td>${fmt(j.date)}</td>
+      <td>${statusBadge(j.status)}</td>
+      <td>Pass:${j.pass} Fail:${j.fail}</td></tr>`);
+  });
+  document.getElementById('compare-hint').textContent=`共 ${list.length} 条历史，请勾选 2 个不同版本的行。`;
+}
+document.getElementById('hist-apply').onclick=renderHistory;
+document.getElementById('compare-btn').onclick=()=>{
+  const ids=[...document.querySelectorAll('.hist-cb:checked')].map(c=>+c.value);
+  if(ids.length!==2){showMsg('比较报告','请勾选恰好 2 个不同版本的行再进行比较。');return;}
+  const a=jobs.find(j=>j.id===ids[0]), b=jobs.find(j=>j.id===ids[1]);
+  buildCompare(a,b);
+};
+function buildCompare(a,b){
+  const mapA={},mapB={};
+  a.results.forEach(r=>mapA[r.testCase]=r); b.results.forEach(r=>mapB[r.testCase]=r);
+  const cases=[...new Set([...Object.keys(mapA),...Object.keys(mapB)])];
+  let html=`<div class="panel mt-3"><div class="panel-title">比较报告：${a.version} ↔ ${b.version}
+      <button class="btn btn-outline-primary btn-sm" onclick="saveCompare()">保存到本地</button></div>
+    <div class="panel-body p-2"><div class="table-responsive"><table class="table table-sm mb-0">
+      <thead><tr><th>Job Name</th><th>Test Case</th><th>${a.version}</th><th>${b.version}</th><th>Change</th></tr></thead><tbody>`;
+  cases.forEach(c=>{
+    const ra=mapA[c], rb=mapB[c];
+    const va=ra?(ra.value!=null?`${ra.value} ${ra.unit}`:(ra.status==='PASS'?'通过':'失败')):'—';
+    const vb=rb?(rb.value!=null?`${rb.value} ${rb.unit}`:(rb.status==='PASS'?'通过':'失败')):'—';
+    let chg='—',cls='';
+    if(ra&&rb&&ra.value!=null&&rb.value!=null){
+      const diff=+(rb.value-ra.value).toFixed(2); const pct=ra.value?((diff/ra.value)*100).toFixed(1):'0';
+      chg=`${diff>0?'+':''}${diff} (${pct}%)`; cls=diff>0?'compare-change-up':'compare-change-down';
+    }else if(ra&&rb&&ra.status!==rb.status){
+      chg=(ra.status==='FAILURE'?'失败→通过 ✓':'通过→失败 ✗'); cls=(ra.status==='FAILURE')?'compare-change-up':'compare-change-down';
+    }
+    html+=`<tr><td>${a.jobName}</td><td>${c}</td><td>${va}</td><td>${vb}</td><td class="${cls}">${chg}</td></tr>`;
+  });
+  html+=`</tbody></table></div></div></div>`;
+  document.getElementById('compare-result').innerHTML=html;
+  window._compareHTML=html;
+  document.getElementById('compare-result').scrollIntoView({behavior:'smooth'});
+}
+window.saveCompare=()=>{
+  if(!window._compareHTML){return;}
+  const blob=new Blob([`<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>比较报告</title>
+    <style>body{font-family:sans-serif;padding:20px;background:#eef6fb;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #cfd8e0;padding:6px 10px;}th{background:#dfeefb;}</style></head>
+    <body><h3>Comparison Report</h3>${window._compareHTML.replace(/<div class="panel[^>]*>|<div class="panel-title">|<\/div>|<div class="panel-body[^>]*>|<div class="table-responsive">/g,'').replace(/<button class="btn btn-outline-primary btn-sm"[^>]*>.*?<\/button>/g,'')}</body></html>`],{type:'text/html'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='comparison_report.html'; a.click();
+  URL.revokeObjectURL(url);
+};
+
+/* ============================================================
+   作业详情弹窗（支持 Trigger / Rerun）
+   ============================================================ */
+function openJob(id){
+  const j=jobs.find(x=>x.id===id); if(!j)return;
+  document.getElementById('jobModalTitle').textContent=`作业 #${j.id} · ${j.jobName}`;
+  let rows=j.results.map(r=>{
+    const v=r.value!=null?`${r.value} ${r.unit||''}`:(r.status==='PASS'?'通过':'失败');
+    return `<tr class="${r.status==='FAILURE'?'row-fail':''}"><td>${r.testCase}</td><td>${statusBadge(r.status)}</td><td>${v}</td></tr>`;
+  }).join('');
+  document.getElementById('jobModalBody').innerHTML=`
+    <div class="row mb-2">
+      <div class="col-6">CommitID: <code>${j.commitId}</code></div><div class="col-6">Author: ${j.author}</div>
+      <div class="col-6 mt-1">Project: ${j.project}</div><div class="col-6 mt-1">Date: ${fmt(j.date)}</div>
+      <div class="col-12 mt-1">总体状态: ${statusBadge(j.status)}　Pass:${j.pass} Fail:${j.fail}</div>
+    </div>
+    <table class="table table-sm"><thead><tr><th>TestCase</th><th>Status</th><th>Value</th></tr></thead><tbody>${rows}</tbody></table>`;
+  document.getElementById('jobTriggerBtn').style.display = j.status==='FAILURE'?'inline-block':'none';
+  $('#jobModal').modal('show');
+  window._curJob=j;
+}
+window.openJob=openJob;
+document.getElementById('jobTriggerBtn').onclick=()=>{
+  const j=window._curJob;
+  showMsg('自动定位回归测试',`已提交 Regression Narrow Down 用于锁定引入问题的版本。<br>返回的 Jenkins 作业链接：<br><code>http://10.9.0.54:8888/job/Regression_Narrow_Down/job/regression_test/${j.id}</code>`);
+  $('#jobModal').modal('hide');
+};
+document.getElementById('jobRerunBtn').onclick=()=>{
+  const j=window._curJob; $('#jobModal').modal('hide'); rerunJob(j.id);
+};
+
+/* ============================================================
+   通用提示 & 初始化
+   ============================================================ */
+function showMsg(title,body){document.getElementById('msgTitle').textContent=title;document.getElementById('msgBody').innerHTML=body;$('#msgModal').modal('show');}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
+
+/* ============================================================
+   9. 实时运行引擎（让演示看起来像真实在跑）
+   ============================================================ */
+const LIVE_NAMES=[
+  "Sinexus_X200_compute build","Sinexus_X200_compute func","Sinexus_X200_video enc",
+  "Sinexus_S200_compute perf","Sinexus_S200_video dec","Sinexus_X200_compute perf",
+  "Sinexus_S200_compute build","Sinexus_X200_video dec"
+];
+const liveJobs=[]; let liveSeq=1; let lastUpdate=Date.now(); let liveChartTick=0;
+function liveStage(jn){
+  if(jn.includes('build'))return '编译中';
+  if(jn.includes('perf'))return '性能采集';
+  if(jn.includes('func'))return '功能测试';
+  if(jn.includes('enc'))return '视频编码';
+  return '视频解码';
+}
+function spawnLiveJob(){
+  const jn=pick(LIVE_NAMES);
+  liveJobs.push({id:'L'+String(liveSeq++).padStart(3,'0'),jobName:jn,author:pick(authors),
+    start:Date.now(),dur:ri(80,160)*1000,progress:0,stage:liveStage(jn)});
+}
+for(let i=0;i<3;i++) spawnLiveJob();
+
+function renderLivePanel(){
+  const wrap=document.getElementById('live-jobs'); if(!wrap)return;
+  wrap.innerHTML=liveJobs.map(j=>{
+    const p=Math.min(100,Math.floor(j.progress));
+    return `<div class="col-md-4 mb-2"><div class="live-card">
+      <div class="d-flex justify-content-between align-items-center">
+        <span><span class="badge badge-running">RUNNING</span> <b>#${j.id}</b> <span style="font-size:12px;">${j.jobName}</span></span>
+        <span class="font-weight-bold" style="color:#f39c12">${p}%</span>
+      </div>
+      <div class="progress mt-1" style="height:8px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" style="width:${p}%"></div></div>
+      <div class="legend-note mb-0">${j.author} · ${j.stage}</div>
+    </div></div>`;
+  }).join('');
+}
+
+function finalizeLiveJob(j){
+  const now=demoNow();
+  const jn=j.jobName;
+  const jt=jn.includes('build')?'building':jn.includes('perf')?'perf':'func';
+  let results=[],pass=0,fail=0;
+  if(jt==='perf'){
+    perfCases.forEach(pc=>{const v=+(pc.base+(Math.random()*2-1)*pc.spread).toFixed(2);
+      const st=(Math.random()<0.04)?'FAIL':'PASS';results.push({testCase:pc.name,status:st,value:v,unit:pc.unit});st==='PASS'?pass++:fail++;});
+  }else{
+    const cnt=ri(1,5);for(let k=0;k<cnt;k++){const st=(Math.random()<0.22)?'FAIL':'PASS';
+      results.push({testCase:pick(funcCases),status:st,value:null,unit:null});st==='PASS'?pass++:fail++;}
+  }
+  const status=fail>0?'FAILURE':'SUCCESS';
+  const commit=hex(7);
+  jobs.unshift({id:nextId++,jobName:jn,project:jn.split(' ')[0],jobType:jt,commitId:commit,
+    version:commit,author:j.author,date:now,status,pass,fail,results});
+  const idx=liveJobs.indexOf(j); if(idx>=0)liveJobs.splice(idx,1);
+  spawnLiveJob();
+  lastUpdate=Date.now();
+  const ov=document.getElementById('view-overview');
+  if(ov&&ov.classList.contains('active')){
+    refreshLatest(); document.getElementById('ov-total').textContent=jobs.length;
+    liveChartTick++; if(liveChartTick%4===0) renderOverview();
+  }
+  toast(`新作业 #${jobs[0].id} 已完成（${status==='FAILURE'?'含失败项':'全部通过'}）`);
+}
+
+function tickLive(){
+  const now=Date.now();
+  const c=demoNow();
+  const clk=document.getElementById('live-clock');
+  if(clk){const p=n=>String(n).padStart(2,'0');clk.textContent=`${c.getFullYear()}-${p(c.getMonth()+1)}-${p(c.getDate())} ${p(c.getHours())}:${p(c.getMinutes())}:${p(c.getSeconds())}`;}
+  const lu=document.getElementById('last-update'); if(lu){const s=Math.floor((now-lastUpdate)/1000);
+    lu.textContent=s<5?'刚刚更新':`${s} 秒前更新`;}
+  liveJobs.forEach(j=>{j.progress=Math.min(100,((now-j.start)/j.dur)*100);});
+  [...liveJobs].forEach(j=>{if(j.progress>=100)finalizeLiveJob(j);});
+  renderLivePanel();
+}
+renderLivePanel();
+tickLive();
+setInterval(tickLive,1000);
+
+initJobFilters(); initLineFilter(); initScatterFilter(); initPerfFilter(); initHistFilter();
+showView('overview');
+</script>
+</body>
+</html>
